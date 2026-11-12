@@ -1,0 +1,103 @@
+org: [FALTA_INTEGRANTE_1_ORGANIZACION]
+service: ms-core-hr
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  memorySize: 512
+  timeout: 30
+  iam:
+    role: [FALTA_INTEGRANTE_1_ARN_LABROLE]
+  environment:
+    DB_HOST: ${env:DB_HOST, '[FALTA_INTEGRANTE_1_DB_HOST]'}
+    DB_PORT: ${env:DB_PORT, '5432'}
+    DB_NAME: ${env:DB_NAME, '[FALTA_INTEGRANTE_1_DB_NAME]'}
+    DB_USER: ${env:DB_USER, '[FALTA_INTEGRANTE_1_DB_USER]'}
+    DB_PASSWORD: ${env:DB_PASSWORD, '[FALTA_INTEGRANTE_1_DB_PASSWORD]'}
+    SNS_HR_EVENTS_ARN: [FALTA_INTEGRANTE_4_ARN_SNS_HR_EVENTS]
+    S3_BUCKET_NAME: [FALTA_INTEGRANTE_1_NOMBRE_BUCKET_S3]
+
+package:
+  patterns:
+    - './**'
+    - '../../shared/**'
+
+functions:
+  core_hr_api:
+    handler: router.lambda_handler
+    events:
+      - http:
+          path: /departments
+          method: get
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /departments
+          method: post
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /employees
+          method: get
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /employees/{id}
+          method: get
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /employees
+          method: post
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /employees/{id}
+          method: put
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /employees/{id}/contract-upload-url
+          method: post
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /employees/{id}/contract-url
+          method: get
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization

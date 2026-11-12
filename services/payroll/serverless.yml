@@ -1,0 +1,86 @@
+org: [FALTA_INTEGRANTE_1_ORGANIZACION]
+service: ms-payroll
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-1
+  memorySize: 512
+  timeout: 30
+  iam:
+    role: [FALTA_INTEGRANTE_1_ARN_LABROLE]
+  environment:
+    DB_HOST: ${env:DB_HOST, '[FALTA_INTEGRANTE_1_DB_HOST]'}
+    DB_PORT: ${env:DB_PORT, '5432'}
+    DB_NAME: ${env:DB_NAME, '[FALTA_INTEGRANTE_1_DB_NAME]'}
+    DB_USER: ${env:DB_USER, '[FALTA_INTEGRANTE_1_DB_USER]'}
+    DB_PASSWORD: ${env:DB_PASSWORD, '[FALTA_INTEGRANTE_1_DB_PASSWORD]'}
+    S3_BUCKET_NAME: [FALTA_INTEGRANTE_1_NOMBRE_BUCKET_S3]
+    SNS_PAYROLL_EVENTS_ARN: [FALTA_INTEGRANTE_4_ARN_SNS_PAYROLL_EVENTS]
+
+package:
+  patterns:
+    - './**'
+    - '../../shared/**'
+
+functions:
+  # ==========================================================================
+  # ENDPOINTS REST UNIFICADOS (API Gateway + Lambda Custom Authorizer)
+  # ==========================================================================
+  payroll_api:
+    handler: router.lambda_handler
+    events:
+      - http:
+          path: /payrolls/calculate
+          method: post
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /payrolls/{period}
+          method: get
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+      - http:
+          path: /payrolls/employee/{employee_id}
+          method: get
+          cors: true
+          authorizer:
+            name: customAuthorizer
+            arn: [FALTA_INTEGRANTE_1_ARN_CUSTOM_AUTHORIZER]
+            resultTtlInSeconds: 300
+            identitySource: method.request.header.Authorization
+
+  # ==========================================================================
+  # WORKERS ASÍNCRONOS SQS (Event-Driven Architecture - Semana 15)
+  # ==========================================================================
+  syncEmployeeCreatedWorker:
+    handler: handlers/sync_employee_created_worker.lambda_handler
+    timeout: 30
+    events:
+      - sqs:
+          # Export equivalente en hcm-events: !ImportValue hcm-events-${sls:stage}-payroll-hr-sync-queue-arn
+          arn: [FALTA_INTEGRANTE_4_ARN_SQS_PAYROLL_HR_SYNC]
+          batchSize: 10
+          maximumConcurrency: 2
+          functionResponseType: ReportBatchItemFailures
+
+  syncLeaveApprovedWorker:
+    handler: handlers/sync_leave_approved_worker.lambda_handler
+    timeout: 30
+    events:
+      - sqs:
+          # Export equivalente en hcm-events: !ImportValue hcm-events-${sls:stage}-payroll-attendance-sync-queue-arn
+          arn: [FALTA_INTEGRANTE_4_ARN_SQS_PAYROLL_ATTENDANCE_SYNC]
+          batchSize: 10
+          maximumConcurrency: 2
+          functionResponseType: ReportBatchItemFailures

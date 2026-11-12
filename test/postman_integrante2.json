@@ -1,0 +1,388 @@
+{
+  "info": {
+    "_postman_id": "c7b8e110-2026-4a14-9b2e-integrante2hcm",
+    "name": "CS2032 SaaS HCM - Integrante 2 (Core HR & Payroll + ACL)",
+    "description": "Colección Postman v2.1 para los microservicios ms-core-hr y ms-payroll con pruebas automatizadas de ACL (RBAC/Self) y aislamiento multi-tenant.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrlCoreHr",
+      "value": "https://[FALTA_INTEGRANTE_1_API_ID_CORE_HR].execute-api.us-east-1.amazonaws.com/dev",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlPayroll",
+      "value": "https://[FALTA_INTEGRANTE_1_API_ID_PAYROLL].execute-api.us-east-1.amazonaws.com/dev",
+      "type": "string"
+    },
+    {
+      "key": "tokenTenantAAdmin",
+      "value": "[FALTA_INTEGRANTE_1_JWT_TENANT_A_ADMIN]",
+      "type": "string"
+    },
+    {
+      "key": "tokenTenantAHrManager",
+      "value": "[FALTA_INTEGRANTE_1_JWT_TENANT_A_HR_MANAGER]",
+      "type": "string"
+    },
+    {
+      "key": "tokenTenantAEmployee",
+      "value": "[FALTA_INTEGRANTE_1_JWT_TENANT_A_EMPLOYEE]",
+      "type": "string"
+    },
+    {
+      "key": "tokenTenantBAdmin",
+      "value": "[FALTA_INTEGRANTE_1_JWT_TENANT_B_ADMIN]",
+      "type": "string"
+    },
+    {
+      "key": "departmentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "employeeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "periodId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Core HR - Departments",
+      "item": [
+        {
+          "name": "Crear Departamento (tenant_a - ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.department_id) {",
+                  "    pm.collectionVariables.set('departmentId', jsonData.department_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Arquitectura Cloud\",\n  \"budget\": 180000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/departments",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["departments"]
+            }
+          }
+        },
+        {
+          "name": "Listar Departamentos (tenant_a)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/departments",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["departments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Core HR - Employees",
+      "item": [
+        {
+          "name": "Crear Empleado y Contrato (tenant_a - ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.employee && jsonData.employee.employee_id) {",
+                  "    pm.collectionVariables.set('employeeId', jsonData.employee.employee_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos\",\n  \"lastName\": \"Mendoza\",\n  \"email\": \"carlos.mendoza@tenanta.com\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"salary\": 5200.00,\n  \"contractType\": \"FULL_TIME\",\n  \"hireDate\": \"2026-11-01\",\n  \"role\": \"EMPLOYEE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/employees",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["employees"]
+            }
+          }
+        },
+        {
+          "name": "Listar Empleados (tenant_a)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAHrManager}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/employees",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["employees"]
+            }
+          }
+        },
+        {
+          "name": "Obtener Empleado por ID (tenant_a)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/employees/{{employeeId}}",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["employees", "{{employeeId}}"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Empleado (Self o Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carlos Alberto\",\n  \"lastName\": \"Mendoza Ruiz\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/employees/{{employeeId}}",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["employees", "{{employeeId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Core HR - Contracts S3",
+      "item": [
+        {
+          "name": "Obtener Presigned URL de Contrato (tenant_a - ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "pm.test('Presigned URL contiene prefijo aislado de tenant_a', function () {",
+                  "    pm.expect(data.uploadUrl).to.include('/tenant_a/core-hr/contracts/');",
+                  "    pm.expect(data.s3Key).to.match(/^tenant_a\\/core-hr\\/contracts\\//);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/employees/{{employeeId}}/contract-upload-url",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["employees", "{{employeeId}}", "contract-upload-url"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Payroll - Nóminas y Boletas",
+      "item": [
+        {
+          "name": "Calcular Nómina Mensual (tenant_a - ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "if (data.periodId) {",
+                  "    pm.collectionVariables.set('periodId', data.periodId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"2026-11\",\n  \"generatePdfs\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlPayroll}}/payrolls/calculate",
+              "host": ["{{baseUrlPayroll}}"],
+              "path": ["payrolls", "calculate"]
+            }
+          }
+        },
+        {
+          "name": "Descargar Boleta de Pago PDF (Presigned GET)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAAdmin}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrlPayroll}}/payrolls/{{periodId}}/slips/{{employeeId}}",
+              "host": ["{{baseUrlPayroll}}"],
+              "path": ["payrolls", "{{periodId}}", "slips", "{{employeeId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Validaciones ACL y Aislamiento Multi-Tenant",
+      "item": [
+        {
+          "name": "[ACL 403] Crear Empleado con Rol EMPLOYEE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Debe denegar acceso con HTTP 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAEmployee}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"No\",\n  \"lastName\": \"Autorizado\",\n  \"email\": \"no.autorizado@tenanta.com\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"salary\": 3000.00,\n  \"contractType\": \"FULL_TIME\",\n  \"hireDate\": \"2026-11-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/employees",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["employees"]
+            }
+          }
+        },
+        {
+          "name": "[ACL 403] Calcular Nómina con Rol EMPLOYEE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Debe denegar cálculo de nómina con HTTP 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantAEmployee}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"2026-11\",\n  \"generatePdfs\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrlPayroll}}/payrolls/calculate",
+              "host": ["{{baseUrlPayroll}}"],
+              "path": ["payrolls", "calculate"]
+            }
+          }
+        },
+        {
+          "name": "[Multi-Tenant 404] Consultar Empleado de tenant_a con Token de tenant_b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Aislamiento de esquema retorna HTTP 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenTenantBAdmin}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrlCoreHr}}/employees/{{employeeId}}",
+              "host": ["{{baseUrlCoreHr}}"],
+              "path": ["employees", "{{employeeId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
