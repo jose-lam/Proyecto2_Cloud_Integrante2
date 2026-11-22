@@ -91,7 +91,7 @@ def _parse_and_validate_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not raw_leave_id:
         raise PermanentPayloadError("Campo 'leave_id' requerido")
     try:
-        leave_id = str(UUID(str(raw_leave_id)))
+        leave_id = str(UUID(str(raw_leave_id).removeprefix("l-")))
     except ValueError as exc:
         raise PermanentPayloadError(f"UUID inválido en 'leave_id': {raw_leave_id}") from exc
 

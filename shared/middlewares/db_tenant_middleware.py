@@ -14,9 +14,9 @@ def with_tenant_db(func):
     @functools.wraps(func)
     def wrapper(event, context, *args, **kwargs):
         authorizer = event.get('requestContext', {}).get('authorizer', {})
-        tenant_id = authorizer.get('tenant_id')
+        tenant_id = authorizer.get('tenantId') or authorizer.get('tenant_id')
         role = authorizer.get('role')
-        employee_id = authorizer.get('employee_id')
+        employee_id = authorizer.get('employeeId') or authorizer.get('employee_id')
 
         # 1 y 2. Extraer y validar el tenant contra lista blanca
         if not tenant_id or tenant_id not in ALLOWED_TENANTS:

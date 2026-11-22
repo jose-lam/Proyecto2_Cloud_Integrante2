@@ -43,6 +43,18 @@ def lambda_handler(event, context, conn, cursor, tenant_id, role, auth_employee_
                 details={"forbiddenFields": sorted(forbidden_fields)}
             )
 
+    if body.get("status") == "ACTIVE":
+        cursor.execute(
+            "SELECT status FROM employees WHERE employee_id = %s",
+            (target_employee_id,)
+        )
+        current = cursor.fetchone()
+        if current and current["status"] == "PENDING_ONBOARDING":
+            return error(
+                409,
+                "Usa complete-onboarding para activar este empleado"
+            )
+
     field_mapping = {
         "firstName": "first_name",
         "lastName": "last_name",

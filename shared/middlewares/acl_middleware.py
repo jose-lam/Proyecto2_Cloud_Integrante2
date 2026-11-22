@@ -2,7 +2,7 @@ import functools
 from typing import Iterable, Optional
 from shared.utils.response import error
 
-PRIVILEGED_ADMIN_ROLES = {"ADMIN", "HR_MANAGER"}
+PRIVILEGED_ADMIN_ROLES = {"ADMIN", "HR_MANAGER", "HR"}
 
 
 def _extract_role(event: dict) -> str:
@@ -18,6 +18,8 @@ def require_roles(allowed_roles: Iterable[str]):
     Si el rol no está autorizado, retorna HTTP 403 Forbidden sin abrir conexión a RDS.
     """
     normalized_allowed = {str(r).strip().upper() for r in allowed_roles if r}
+    if "HR_MANAGER" in normalized_allowed:
+        normalized_allowed.add("HR")
 
     def decorator(func):
         @functools.wraps(func)

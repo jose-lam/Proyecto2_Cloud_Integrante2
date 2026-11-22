@@ -1,5 +1,6 @@
 import sys
 import json
+import uuid
 import os
 import re
 from datetime import datetime, timezone
@@ -133,6 +134,8 @@ def lambda_handler(event, context, conn, cursor, tenant_id, role, auth_employee_
         LEFT JOIN latest_contracts lc
             ON e.employee_id = lc.employee_id
         WHERE e.status = 'ACTIVE'
+          AND e.hire_date IS NOT NULL
+          AND e.hire_date <= (to_date(%s || '-01', 'YYYY-MM-DD') + INTERVAL '1 month - 1 day')::date
           AND (esp.base_salary IS NOT NULL OR lc.salary IS NOT NULL)
         UNION
         SELECT
@@ -144,11 +147,13 @@ def lambda_handler(event, context, conn, cursor, tenant_id, role, auth_employee_
             'FULL_TIME' AS contract_type
         FROM employee_salary_profiles esp
         WHERE esp.is_active = TRUE
+          AND esp.hire_date IS NOT NULL
+          AND esp.hire_date <= (to_date(%s || '-01', 'YYYY-MM-DD') + INTERVAL '1 month - 1 day')::date
           AND NOT EXISTS (
               SELECT 1 FROM employees e WHERE e.employee_id = esp.employee_id
           );
         """,
-        (period, period)
+        (period, period, period, period)
     )
     employees_to_pay = cursor.fetchall()
 
