@@ -1,4 +1,5 @@
 import json
+from handlers.process_candidate_hired_worker import lambda_handler as candidate_hired_handler
 from handlers import (
     get_departments,
     create_department,
@@ -6,6 +7,7 @@ from handlers import (
     get_employee_by_id,
     create_employee,
     update_employee,
+    complete_onboarding,
     get_contract_upload_url,
     get_contract_download_url,
 )
@@ -23,12 +25,17 @@ ROUTES = {
     ("GET", "/employees/{id}"): get_employee_by_id.lambda_handler,
     ("POST", "/employees"): create_employee.lambda_handler,
     ("PUT", "/employees/{id}"): update_employee.lambda_handler,
+    ("POST", "/employees/{id}/complete-onboarding"): complete_onboarding.lambda_handler,
     ("POST", "/employees/{id}/contract-upload-url"): get_contract_upload_url.lambda_handler,
     ("GET", "/employees/{id}/contract-url"): get_contract_download_url.lambda_handler,
 }
 
 
 def lambda_handler(event, context):
+    if isinstance(event, dict) and event.get("Records"):
+        records = event["Records"]
+        if all(r.get("eventSource") == "aws:sqs" for r in records):
+            return candidate_hired_handler(event, context)
     method = event.get("httpMethod", "").upper()
     resource = event.get("resource", "")
 

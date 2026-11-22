@@ -2,6 +2,8 @@ import sys
 import os
 import json
 import boto3
+import uuid
+from datetime import datetime, timezone
 
 for rel_path in ("../", "../../../"):
     abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path))
