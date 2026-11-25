@@ -1,180 +1,141 @@
--- ============================================================================
--- SCRIPT DE VERIFICACIÓN DE SEEDING MASIVO (30,000+ REGISTROS)
--- Dominios: ms-core-hr y ms-payroll (tenant_a, tenant_b, tenant_c)
--- Compatible con PostgreSQL 13+
--- ============================================================================
+\set ON_ERROR_STOP on
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL search_path TO pg_catalog;
 
--- 1. CONTEO EXACTO POR TENANT Y TOTAL ACUMULADO (UNION ALL)
-WITH tenant_counts AS (
-    SELECT
-        'tenant_a'::TEXT AS tenant,
-        (SELECT COUNT(*) FROM tenant_a.employees) AS employees_count,
-        (SELECT COUNT(*) FROM tenant_a.contracts) AS contracts_count,
-        (SELECT COUNT(*) FROM tenant_a.employee_salary_profiles) AS employee_salary_profiles_count,
-        (SELECT COUNT(*) FROM tenant_a.pay_slips) AS pay_slips_count
-    UNION ALL
-    SELECT
-        'tenant_b'::TEXT AS tenant,
-        (SELECT COUNT(*) FROM tenant_b.employees) AS employees_count,
-        (SELECT COUNT(*) FROM tenant_b.contracts) AS contracts_count,
-        (SELECT COUNT(*) FROM tenant_b.employee_salary_profiles) AS employee_salary_profiles_count,
-        (SELECT COUNT(*) FROM tenant_b.pay_slips) AS pay_slips_count
-    UNION ALL
-    SELECT
-        'tenant_c'::TEXT AS tenant,
-        (SELECT COUNT(*) FROM tenant_c.employees) AS employees_count,
-        (SELECT COUNT(*) FROM tenant_c.contracts) AS contracts_count,
-        (SELECT COUNT(*) FROM tenant_c.employee_salary_profiles) AS employee_salary_profiles_count,
-        (SELECT COUNT(*) FROM tenant_c.pay_slips) AS pay_slips_count
-)
-SELECT
-    tenant,
-    employees_count,
-    contracts_count,
-    employee_salary_profiles_count,
-    pay_slips_count,
-    (employees_count + contracts_count + employee_salary_profiles_count + pay_slips_count) AS total_filas_tenant,
-    CASE
-        WHEN employees_count >= 10000
-         AND contracts_count >= 10000
-         AND employee_salary_profiles_count >= 10000
-        THEN 'OK (>= 10,000 por tenant)'
-        ELSE 'ALERTA (< 10,000)'
-    END AS estado_volumen
-FROM tenant_counts
-UNION ALL
-SELECT
-    'TOTAL_GLOBAL'::TEXT AS tenant,
-    SUM(employees_count) AS employees_count,
-    SUM(contracts_count) AS contracts_count,
-    SUM(employee_salary_profiles_count) AS employee_salary_profiles_count,
-    SUM(pay_slips_count) AS pay_slips_count,
-    SUM(employees_count + contracts_count + employee_salary_profiles_count + pay_slips_count) AS total_filas_tenant,
-    CASE
-        WHEN SUM(employees_count) >= 30000
-         AND SUM(contracts_count) >= 30000
-         AND SUM(employee_salary_profiles_count) >= 30000
-        THEN 'OK (>= 30,000 acumulados)'
-        ELSE 'ALERTA (< 30,000)'
-    END AS estado_volumen
-FROM tenant_counts;
-
-
--- 2. AUDITORÍA DE INTEGRIDAD REFERENCIAL Y CERO REGISTROS HUÉRFANOS (UNION ALL)
-WITH orphan_checks AS (
-    -- tenant_a
-    SELECT
-        'tenant_a'::TEXT AS tenant,
-        (SELECT COUNT(*) FROM tenant_a.employees e
-         LEFT JOIN tenant_a.departments d ON e.department_id = d.department_id
-         WHERE e.department_id IS NOT NULL AND d.department_id IS NULL) AS employees_sin_departamento,
-        (SELECT COUNT(*) FROM tenant_a.contracts c
-         LEFT JOIN tenant_a.employees e ON c.employee_id = e.employee_id
-         WHERE e.employee_id IS NULL) AS contracts_huerfanos,
-        (SELECT COUNT(*) FROM tenant_a.employee_salary_profiles esp
-         LEFT JOIN tenant_a.employees e ON esp.employee_id = e.employee_id
-         WHERE e.employee_id IS NULL) AS salary_profiles_huerfanos,
-        (SELECT COUNT(*) FROM tenant_a.employees e
-         LEFT JOIN tenant_a.employee_salary_profiles esp ON e.employee_id = esp.employee_id
-         WHERE esp.employee_id IS NULL) AS employees_sin_perfil_salarial,
-        (SELECT COUNT(*) FROM tenant_a.pay_slips ps
-         LEFT JOIN tenant_a.employees e ON ps.employee_id = e.employee_id
-         LEFT JOIN tenant_a.payroll_periods pp ON ps.period_id = pp.period_id
-         WHERE e.employee_id IS NULL OR pp.period_id IS NULL) AS pay_slips_huerfanos
-    UNION ALL
-    -- tenant_b
-    SELECT
-        'tenant_b'::TEXT AS tenant,
-        (SELECT COUNT(*) FROM tenant_b.employees e
-         LEFT JOIN tenant_b.departments d ON e.department_id = d.department_id
-         WHERE e.department_id IS NOT NULL AND d.department_id IS NULL) AS employees_sin_departamento,
-        (SELECT COUNT(*) FROM tenant_b.contracts c
-         LEFT JOIN tenant_b.employees e ON c.employee_id = e.employee_id
-         WHERE e.employee_id IS NULL) AS contracts_huerfanos,
-        (SELECT COUNT(*) FROM tenant_b.employee_salary_profiles esp
-         LEFT JOIN tenant_b.employees e ON esp.employee_id = e.employee_id
-         WHERE e.employee_id IS NULL) AS salary_profiles_huerfanos,
-        (SELECT COUNT(*) FROM tenant_b.employees e
-         LEFT JOIN tenant_b.employee_salary_profiles esp ON e.employee_id = esp.employee_id
-         WHERE esp.employee_id IS NULL) AS employees_sin_perfil_salarial,
-        (SELECT COUNT(*) FROM tenant_b.pay_slips ps
-         LEFT JOIN tenant_b.employees e ON ps.employee_id = e.employee_id
-         LEFT JOIN tenant_b.payroll_periods pp ON ps.period_id = pp.period_id
-         WHERE e.employee_id IS NULL OR pp.period_id IS NULL) AS pay_slips_huerfanos
-    UNION ALL
-    -- tenant_c
-    SELECT
-        'tenant_c'::TEXT AS tenant,
-        (SELECT COUNT(*) FROM tenant_c.employees e
-         LEFT JOIN tenant_c.departments d ON e.department_id = d.department_id
-         WHERE e.department_id IS NOT NULL AND d.department_id IS NULL) AS employees_sin_departamento,
-        (SELECT COUNT(*) FROM tenant_c.contracts c
-         LEFT JOIN tenant_c.employees e ON c.employee_id = e.employee_id
-         WHERE e.employee_id IS NULL) AS contracts_huerfanos,
-        (SELECT COUNT(*) FROM tenant_c.employee_salary_profiles esp
-         LEFT JOIN tenant_c.employees e ON esp.employee_id = e.employee_id
-         WHERE e.employee_id IS NULL) AS salary_profiles_huerfanos,
-        (SELECT COUNT(*) FROM tenant_c.employees e
-         LEFT JOIN tenant_c.employee_salary_profiles esp ON e.employee_id = esp.employee_id
-         WHERE esp.employee_id IS NULL) AS employees_sin_perfil_salarial,
-        (SELECT COUNT(*) FROM tenant_c.pay_slips ps
-         LEFT JOIN tenant_c.employees e ON ps.employee_id = e.employee_id
-         LEFT JOIN tenant_c.payroll_periods pp ON ps.period_id = pp.period_id
-         WHERE e.employee_id IS NULL OR pp.period_id IS NULL) AS pay_slips_huerfanos
-)
-SELECT
-    tenant,
-    employees_sin_departamento,
-    contracts_huerfanos,
-    salary_profiles_huerfanos,
-    employees_sin_perfil_salarial,
-    pay_slips_huerfanos,
-    CASE
-        WHEN (employees_sin_departamento
-            + contracts_huerfanos
-            + salary_profiles_huerfanos
-            + employees_sin_perfil_salarial
-            + pay_slips_huerfanos) = 0
-        THEN 'OK - 0 REGISTROS HUERFANOS'
-        ELSE 'ERROR - INTEGRIDAD COMPROMETIDA'
-    END AS estado_integridad
-FROM orphan_checks;
-
-
--- 3. ASERCIÓN ESTRICTA (Falla si no se cumplen los 30k o existen huérfanos)
-DO $$
+-- TOTAL_GLOBAL suma exclusivamente empleados y boletas del seed SQL (60 000).
+-- Contratos, perfiles, períodos y departamentos se verifican fuera del total.
+DO $verify$
 DECLARE
-    v_total_employees BIGINT;
-    v_total_profiles BIGINT;
-    v_total_orphans BIGINT;
+    tenant text;
+    namespace constant uuid := 'db5e9d63-39e5-4763-8f62-dc18e22da4ab';
+    department_names text[] := ARRAY['Ingeniería','Recursos Humanos','Finanzas','Operaciones'];
+    required constant integer := 10000;
+    payees constant integer := 1000;
+    month_start date;
+    period_name text;
+    period_id uuid;
+    employees bigint;
+    contracts bigint;
+    profiles bigint;
+    departments bigint;
+    slips bigint;
+    total_slips bigint;
+    invalid bigint;
+    actual_slips bigint;
+    actual_total numeric;
+    problems boolean;
+    global_principal bigint := 0;
 BEGIN
-    SELECT
-        (SELECT COUNT(*) FROM tenant_a.employees)
-      + (SELECT COUNT(*) FROM tenant_b.employees)
-      + (SELECT COUNT(*) FROM tenant_c.employees),
-        (SELECT COUNT(*) FROM tenant_a.employee_salary_profiles)
-      + (SELECT COUNT(*) FROM tenant_b.employee_salary_profiles)
-      + (SELECT COUNT(*) FROM tenant_c.employee_salary_profiles)
-    INTO v_total_employees, v_total_profiles;
+    FOR i IN 1..16 LOOP
+        department_names := array_append(department_names, 'HCM Seed 30k ' || lpad(i::text, 2, '0'));
+    END LOOP;
+    FOREACH tenant IN ARRAY ARRAY['tenant_a','tenant_b','tenant_c'] LOOP
+        EXECUTE format($check$
+            SELECT count(*) FROM %I.departments d
+            JOIN unnest($3) WITH ORDINALITY AS x(name, slot) ON x.name = d.name
+            WHERE x.slot <= 4 OR (
+                d.department_id = public.uuid_generate_v5($1, $2 || ':department:' || d.name)
+                AND d.budget = 100000 AND d.created_at = timestamp '2025-12-31 22:00:00'
+            )
+        $check$, tenant) INTO departments USING namespace, tenant, department_names;
+        IF departments <> 20 THEN
+            RAISE EXCEPTION '%: departamentos válidos=%, esperados=20', tenant, departments;
+        END IF;
 
-    SELECT
-        (SELECT COUNT(*) FROM tenant_a.contracts c LEFT JOIN tenant_a.employees e ON c.employee_id = e.employee_id WHERE e.employee_id IS NULL)
-      + (SELECT COUNT(*) FROM tenant_b.contracts c LEFT JOIN tenant_b.employees e ON c.employee_id = e.employee_id WHERE e.employee_id IS NULL)
-      + (SELECT COUNT(*) FROM tenant_c.contracts c LEFT JOIN tenant_c.employees e ON c.employee_id = e.employee_id WHERE e.employee_id IS NULL)
-      + (SELECT COUNT(*) FROM tenant_a.pay_slips ps LEFT JOIN tenant_a.employees e ON ps.employee_id = e.employee_id WHERE e.employee_id IS NULL)
-      + (SELECT COUNT(*) FROM tenant_b.pay_slips ps LEFT JOIN tenant_b.employees e ON ps.employee_id = e.employee_id WHERE e.employee_id IS NULL)
-      + (SELECT COUNT(*) FROM tenant_c.pay_slips ps LEFT JOIN tenant_c.employees e ON ps.employee_id = e.employee_id WHERE e.employee_id IS NULL)
-    INTO v_total_orphans;
+        EXECUTE format($check$
+            WITH expected AS (
+                SELECT i, public.uuid_generate_v5($1, $2 || ':employee:' || i) AS employee_id,
+                       public.uuid_generate_v5($1, $2 || ':contract:' || i) AS contract_id,
+                       $4[1 + i %% 20] AS department,
+                       (ARRAY['FULL_TIME', 'PART_TIME', 'CONTRACTOR'])[1 + i %% 3] AS contract_type,
+                       1800 + 25 * (i %% 400) AS salary
+                FROM generate_series(0, $3 - 1) AS i
+            )
+            SELECT count(e.employee_id), count(c.contract_id), count(p.employee_id),
+                   count(*) FILTER (WHERE
+                       d.name IS DISTINCT FROM x.department
+                       OR e.email IS DISTINCT FROM x.employee_id::text || '@seed.example.invalid'
+                       OR e.status IS DISTINCT FROM 'ACTIVE' OR e.source_candidate_id IS NOT NULL
+                       OR e.hire_date IS DISTINCT FROM date '2024-01-02'
+                       OR c.employee_id IS DISTINCT FROM x.employee_id
+                       OR c.start_date IS DISTINCT FROM e.hire_date OR c.end_date IS NOT NULL
+                       OR c.contract_type IS DISTINCT FROM x.contract_type
+                       OR c.salary IS DISTINCT FROM x.salary OR c.s3_contract_key IS NOT NULL
+                       OR p.email IS DISTINCT FROM e.email OR p.hire_date IS DISTINCT FROM e.hire_date
+                       OR p.base_salary IS DISTINCT FROM x.salary OR p.is_active IS DISTINCT FROM true
+                       OR EXISTS (SELECT 1 FROM %1$I.contracts other
+                                  WHERE other.employee_id = x.employee_id AND other.contract_id <> x.contract_id)
+                   )
+            FROM expected x
+            LEFT JOIN %1$I.employees e ON e.employee_id = x.employee_id
+            LEFT JOIN %1$I.departments d ON d.department_id = e.department_id
+            LEFT JOIN %1$I.contracts c ON c.contract_id = x.contract_id
+            LEFT JOIN %1$I.employee_salary_profiles p ON p.employee_id = x.employee_id
+        $check$, tenant)
+        INTO employees, contracts, profiles, invalid
+        USING namespace, tenant, required, department_names;
 
-    IF v_total_employees < 30000 OR v_total_profiles < 30000 THEN
-        RAISE EXCEPTION 'Verificación fallida: employees=%, salary_profiles=% (se requieren >= 30,000)',
-            v_total_employees, v_total_profiles;
-    END IF;
+        IF employees <> required OR contracts <> required OR profiles <> required OR invalid <> 0 THEN
+            RAISE EXCEPTION '%: empleados=%, contratos=%, perfiles=%, relaciones inválidas=%',
+                tenant, employees, contracts, profiles, invalid;
+        END IF;
 
-    IF v_total_orphans > 0 THEN
-        RAISE EXCEPTION 'Verificación fallida: se detectaron % registros huérfanos', v_total_orphans;
-    END IF;
+        total_slips := 0;
+        FOR month IN 3..12 LOOP
+            month_start := make_date(2025, month, 1);
+            period_name := to_char(month_start, 'YYYY-MM');
+            period_id := public.uuid_generate_v5(namespace, tenant || ':period:' || period_name);
+            EXECUTE format($check$
+                WITH expected AS (
+                    SELECT public.uuid_generate_v5($1, $2 || ':employee:' || i) AS employee_id,
+                           public.uuid_generate_v5($1, $2 || ':slip:' || $4 || ':' || i) AS slip_id,
+                           1800 + 25 * (i %% 400) AS salary
+                    FROM generate_series(0, $3 - 1) AS i
+                )
+                SELECT count(s.pay_slip_id), count(*) FILTER (WHERE
+                           s.employee_id IS DISTINCT FROM x.employee_id OR s.period_id IS DISTINCT FROM $5
+                           OR s.base_salary IS DISTINCT FROM x.salary OR s.deductions IS DISTINCT FROM x.salary * 0.13
+                           OR s.net_pay IS DISTINCT FROM x.salary * 0.87 OR s.s3_slip_key IS NOT NULL
+                           OR s.generated_at IS DISTINCT FROM $6 + interval '1 month' - interval '2 hours'
+                       )
+                FROM expected x LEFT JOIN %I.pay_slips s ON s.pay_slip_id = x.slip_id
+            $check$, tenant)
+            INTO slips, invalid
+            USING namespace, tenant, payees, period_name, period_id, month_start;
 
-    RAISE NOTICE 'VERIFICACIÓN EXITOSA: % empleados, % perfiles salariales y 0 registros huérfanos.',
-        v_total_employees, v_total_profiles;
-END $$;
+            EXECUTE format(
+                'SELECT count(*), sum(net_pay) FROM %I.pay_slips WHERE period_id = $1', tenant
+            ) INTO actual_slips, actual_total USING period_id;
+
+            EXECUTE format($check$
+                SELECT NOT EXISTS (
+                    SELECT 1 FROM %1$I.payroll_periods
+                    WHERE period_id = $1 AND period_name = $2 AND is_closed
+                      AND total_paid = $3 AND created_at = $7
+                ) OR EXISTS (
+                    SELECT 1 FROM generate_series(0, $6 - 1) i
+                    JOIN %1$I.unpaid_leaves_ledger l
+                      ON l.employee_id = public.uuid_generate_v5($4, $5 || ':employee:' || i)
+                    WHERE l.period_target = $2
+                )
+            $check$, tenant)
+            INTO problems USING period_id, period_name, actual_total, namespace, tenant, required, month_start;
+
+            IF slips <> payees OR actual_slips <> payees OR invalid <> 0 OR problems THEN
+                RAISE EXCEPTION '% %: boletas=%, boletas del período=%, relaciones inválidas=%, conflicto de período o licencia=%',
+                    tenant, period_name, slips, actual_slips, invalid, problems;
+            END IF;
+            total_slips := total_slips + slips;
+        END LOOP;
+        IF total_slips <> required THEN
+            RAISE EXCEPTION '%: boletas=%, esperadas=%', tenant, total_slips, required;
+        END IF;
+        RAISE NOTICE '%: empleados=%, boletas=%, contratos=%, perfiles=%, departamentos=%, períodos=10, empleados de Payroll=%',
+            tenant, employees, total_slips, contracts, profiles, departments, payees;
+        global_principal := global_principal + employees + total_slips;
+    END LOOP;
+
+    RAISE NOTICE 'TOTAL_GLOBAL=% (empleados + boletas del seed SQL)', global_principal;
+END
+$verify$;
+COMMIT;
